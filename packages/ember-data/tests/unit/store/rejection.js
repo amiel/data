@@ -20,6 +20,8 @@ module("unit/store/rejection - Handling errors in find", {
         notFoundCalled = true;
       },
     });
+
+    Record.reopenClass({ toString: function() { return 'Record'; } });
   },
 
   teardown: function() {
@@ -28,19 +30,16 @@ module("unit/store/rejection - Handling errors in find", {
 });
 
 
-// This test doesn't fail without my change yet. For some reason there is still
-// a record.
 test("rethrows the original error", function() {
-  store.unloadAll(Record);
+  store.getById = Ember.K;
 
   try {
     store.find(Record, 2).then(undefined, async(function(error) {
-      // Same thing, not getting here
+      // does not get here
       equal(error.message, 'Cannot find', 'correct error should be "Cannot find"');
     }));
-  } catch (e) {
-    // this seems to work
-    equal(e.message, 'Cannot find', 'expected error to be "Cannot find"');
+  } catch (error) {
+    equal(error.message, 'Cannot find', 'correct error should be "Cannot find"');
   }
 });
 
@@ -54,16 +53,15 @@ test("calls notFound if the record exists", function() {
   notFoundCalled = false;
 
   try {
-    store.find(Record, 1).then(async(function(record) {
-      console.log("test"); // not called
-    }), async(function(record) {
-      console.log("fail"); // also not called
+    store.find(Record, 1).then(undefined, async(function(error) {
+      // We are not actually getting here
       equal(notFoundCalled, true, 'expected notFound to be called on the record');
+      equal(error.message, 'Cannot find', 'expected error to be "Cannot find"');
     }));
-  } catch (e) {
+  } catch (error) {
     // this seems to work
     equal(notFoundCalled, true, 'expected notFound to be called on the record');
-    equal(e.message, 'Cannot find', 'expected error to be "Cannot find"');
+    equal(error.message, 'Cannot find', 'expected error to be "Cannot find"');
   }
 });
 

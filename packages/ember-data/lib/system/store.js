@@ -1720,7 +1720,7 @@ function _find(adapter, store, type, id) {
     return store.push(type, payload);
   }, function(error) {
     var record = store.getById(type, id);
-    if (record) { record.notFound(); }
+    if (record && record.notFound) { record.notFound(); }
     throw error;
   }, "DS: Extract payload of '" + type + "'");
 }
