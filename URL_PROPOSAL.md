@@ -57,6 +57,32 @@ export default DS.RESTAdapter.extend({
 
 ### Resolving template segments (alternative solution)
 
+An alternative solution could be to introduce a new object to resolve the path
+segments. This feels heavy-handed, but the usage ends up being very elegant.
+
+
+```javascript
+// adapter
+export default DS.RESTAdapter.extend({
+  namespace: 'api/v1',
+  pathTemplate: ':namespace/:parent_id/:category/:id',
+});
+
+// url resolver ?
+export default Ember.Object.extend({ // Sure, it could be DS.URLResolver.extend
+  category: function() {
+    return _pathForCategory(record.get('category'));
+  }.property('record.category'),
+
+  parent_id: function() {
+    return record.get('parent.id');
+  };
+});
+
+```
+
+
+
 ## Drawbacks
 
 * Building URLs in this way is likely to be less performant. If this proposal is
