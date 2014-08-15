@@ -21,10 +21,41 @@ configuration to be easy too.
 ## Detailed Design
 
 `buildURL` and associated methods and properties will be moved to a mixin design
-to handle url generation only.
+to handle url generation only. `buildURL` will use templates to generate a URL
+instead of manually assembling parts. Simple usage example:
 
-> More to come
+```javascript
+export default DS.RESTAdapter.extend({
+  namespace: 'api/v1',
+  pathTemplate: ':namespace/:type/:id'
+});
+```
 
+### Resolving template segments
+
+Each segment (starting with `:`), will be resolved by trying a number of strategies:
+
+1. Special case `:id` to use the `id` argument passed to `buildURL`.
+2. Get the attribute from the `record` argument passed to `buildURL`
+   (`record.get(segment)`).
+3. Get the attribute from the adapter (`this.get(segment)`).
+4. If the current result is a function, call it with the arguments from `buildURL`
+   (`segmentValue(type, id, record)`).
+
+Example:
+
+```javascript
+export default DS.RESTAdapter.extend({
+  namespace: 'api/v1',
+  pathTemplate: ':namespace/:parent_id/:category/:id',
+  category: function(type, id, record) {
+    return _pathForCategory(record.get('category'));
+  }
+});
+```
+
+
+### Resolving template segments (alternative solution)
 
 ## Drawbacks
 
