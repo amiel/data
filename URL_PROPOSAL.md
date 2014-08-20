@@ -54,6 +54,40 @@ export default DS.RESTAdapter.extend({
 });
 ```
 
+#### Psuedo-code implementation
+
+```javascript
+function _parseURLTemplate(template, fn) {
+  var parts = template.split('/');
+  return parts.map(function(part) {
+    if (_isDynamic(part)) {
+      return fn(_dynamicName(part));
+    } else {
+      return part;
+    }
+  });
+};
+
+RESTAdapter = AbstractAdapter.extend({
+  buildURL: function(type, id, record) {
+    var urlParts = _parseURLTemplate(this.get('urlTemplate'), function(name) {
+      var value;
+      if (name === 'id') return id;
+
+      value = get(record, name);
+      if (!value) value = get(this, name);
+
+      if ($.isFunction(value)) {
+        value = value(type, id, record);
+      }
+
+      return value;
+    });
+
+    return urlParts.compact().join('/');
+  }
+});
+```
 
 ### Resolving template segments (alternative solution)
 
@@ -78,7 +112,32 @@ export default Ember.Object.extend({ // Sure, it could be DS.URLResolver.extend
     return record.get('parent.id');
   };
 });
+```
 
+#### Psuedo-code implementation
+
+```javascript
+function _parseURLTemplate(template, fn) {
+  var parts = template.split('/');
+  return parts.map(function(part) {
+    if (_isDynamic(part)) {
+      return fn(_dynamicName(part));
+    } else {
+      return part;
+    }
+  });
+};
+
+RESTAdapter = AbstractAdapter.extend({
+  buildURL: function(type, id, record) {
+    var urlResolver = _lookupURLResolver(type).create({ type: type, id: id, record: record});
+    var urlParts = _parseURLTemplate(this.get('urlTemplate'), function(name) {
+      return urlResolver.get(name);
+    });
+
+    return urlParts.compact().join('/');
+  }
+});
 ```
 
 
