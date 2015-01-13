@@ -1,8 +1,8 @@
-# urlTemplate Proposal
+# pathTemplate Proposal
 
 ## Summary
 
-`urlTemplate` improves the extesibility of API endpoint urls in `RESTAdapter`.
+`pathTemplate` improves the extesibility of API endpoint urls in `RESTAdapter`.
 
 ## Motivation
 
@@ -27,90 +27,29 @@ instead of manually assembling parts. Simple usage example:
 ```javascript
 export default DS.RESTAdapter.extend({
   namespace: 'api/v1',
-  pathTemplate: ':namespace/:type/:id'
+  pathTemplate: '/:namespace/posts/:id'
 });
 ```
 
 ### Resolving template segments
 
-Each segment (starting with `:`), will be resolved by trying a number of strategies:
-
-1. Special case `:id` to use the `id` argument passed to `buildURL`.
-2. Get the attribute from the `record` argument passed to `buildURL`
-   (`record.get(segment)`).
-3. Get the attribute from the adapter (`this.get(segment)`).
-4. If the current result is a function, call it with the arguments from `buildURL`
-   (`segmentValue(type, id, record)`).
-
-Example:
-
-```javascript
-export default DS.RESTAdapter.extend({
-  namespace: 'api/v1',
-  pathTemplate: ':namespace/:parent_id/:category/:id',
-  category: function(type, id, record) {
-    return _pathForCategory(record.get('category'));
-  }
-});
-```
-
-#### Psuedo-code implementation
-
-```javascript
-function _parseURLTemplate(template, fn) {
-  var parts = template.split('/');
-  return parts.map(function(part) {
-    if (_isDynamic(part)) {
-      return fn(_dynamicName(part));
-    } else {
-      return part;
-    }
-  });
-};
-
-RESTAdapter = AbstractAdapter.extend({
-  buildURL: function(type, id, record) {
-    var urlParts = _parseURLTemplate(this.get('urlTemplate'), function(name) {
-      var value;
-      if (name === 'id') return id;
-
-      value = get(record, name);
-      if (!value) value = get(this, name);
-
-      if ($.isFunction(value)) {
-        value = value(type, id, record);
-      }
-
-      return value;
-    });
-
-    return urlParts.compact().join('/');
-  }
-});
-```
-
-### Resolving template segments (alternative solution)
-
-An alternative solution could be to introduce a new object to resolve the path
-segments. This feels heavy-handed, but the usage ends up being very elegant.
-
+Each dynamic path segment
 
 ```javascript
 // adapter
 export default DS.RESTAdapter.extend({
   namespace: 'api/v1',
-  pathTemplate: ':namespace/:parent_id/:category/:id',
-});
+  pathTemplate: '/:namespace/posts/:post_id/:category_name/:id',
 
-// url resolver ?
-export default Ember.Object.extend({ // Sure, it could be DS.URLResolver.extend
-  category: function() {
-    return _pathForCategory(record.get('category'));
-  }.property('record.category'),
+  pathSegments: {
+    category_name: function(record) {
+      return _pathForCategory(record.get('category'));
+    }
 
-  parent_id: function() {
-    return record.get('parent.id');
-  };
+    post_id: function(record) {
+      return record.get('post.id');
+    };
+  }
 });
 ```
 
@@ -120,8 +59,8 @@ export default Ember.Object.extend({ // Sure, it could be DS.URLResolver.extend
 function _parseURLTemplate(template, fn) {
   var parts = template.split('/');
   return parts.map(function(part) {
-    if (_isDynamic(part)) {
-      return fn(_dynamicName(part));
+    if (_isSegment(part)) {
+      return fn(_segmentName(part));
     } else {
       return part;
     }
@@ -130,15 +69,22 @@ function _parseURLTemplate(template, fn) {
 
 RESTAdapter = AbstractAdapter.extend({
   buildURL: function(type, id, record) {
-    var urlResolver = _lookupURLResolver(type).create({ type: type, id: id, record: record});
-    var urlParts = _parseURLTemplate(this.get('urlTemplate'), function(name) {
-      return urlResolver.get(name);
+    var urlResolver = _lookupURLResolver(type);
+    var template = this.get('urlTemplate')
+    var urlParts = _parseURLTemplate(template, function(name) {
+      return urlResolver.get(name)(record);
     });
+
+    // Also add host if it exists
 
     return urlParts.compact().join('/');
   }
 });
 ```
+
+### Different URL templates per action
+
+
 
 
 
@@ -155,9 +101,9 @@ hooks.
 
 ## Unresolved Questions
 
-* How many templates are reasonable? I'm starting with just `pathTemplate` to
-  start with just the simplest case, but maybe there should be a
-  `urlTemplate: "http://:host/:namespace/:path"`, and there could also be
+* How many templates are reasonable? There could also be
   templates for different operations such as `findAll`, `findQuery`,
   `findHasMany`, `findBelongsTo`, etc.
+
+
 
