@@ -1334,6 +1334,22 @@ test("findMany - a custom serializer is used if present", function() {
   }));
 });
 
+test('buildURL - with a url template', function() {
+  run(function() {
+    adapter.setProperties({
+      host: 'http://example.com',
+      urlTemplate: '{host}/api/v1/{pathForType}/{id}'
+    });
+  });
+
+  ajaxResponse({ posts: [{ id: 1 }] });
+
+  run(store, 'find', 'post', 1).then(async(function(post) {
+    equal(passedUrl, "http://example.com/api/v1/posts/1");
+  }));
+});
+
+
 test('buildURL - with host and namespace', function() {
   run(function() {
     adapter.setProperties({

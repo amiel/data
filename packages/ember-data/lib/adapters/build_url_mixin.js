@@ -1,4 +1,6 @@
 var get = Ember.get;
+var isArray = Ember.isArray;
+var sanitize = encodeURIComponent;
 
 /**
 
@@ -28,6 +30,9 @@ var get = Ember.get;
   @namespace DS
 */
 export default Ember.Mixin.create({
+  // Default template should mimick original behaviour
+  urlTemplate: '{host}{/namespace}/{pathForType}{/id}',
+
   /**
     Builds a URL for a given type and optional ID.
 
@@ -45,26 +50,60 @@ export default Ember.Mixin.create({
     @return {String} url
   */
   buildURL: function(type, id, record) {
-    var url = [];
-    var host = get(this, 'host');
-    var prefix = this.urlPrefix();
+    var template = this.compileTemplate(this.get('urlTemplate'));
+    var templateResolver = this.templateResolverFor(type);
 
-    if (type) { url.push(this.pathForType(type)); }
+    return template.fill(function(name) {
+      var result = templateResolver.get(name);
 
-    //We might get passed in an array of ids from findMany
-    //in which case we don't want to modify the url, as the
-    //ids will be passed in through a query param
-    if (id && !Ember.isArray(id)) { url.push(encodeURIComponent(id)); }
-
-    if (prefix) { url.unshift(prefix); }
-
-    url = url.join('/');
-    if (!host && url) { url = '/' + url; }
-
-    return url;
+      if (Ember.typeOf(result) === 'function') {
+        return result(id, record);
+      } else {
+        return result;
+      }
+    });
   },
 
-  /**
+  // TODO: Use fully compliant rfc6570 library
+  compileTemplate: function(template) {
+    return Ember.Object.create({
+      template: template,
+      fill: function(fn) {
+        return this.get('template').replace(/\{([\/?]?)(\w+)\}/g, function(_, prefix, name) {
+          var result = fn(name);
+
+          if (prefix === '?') { prefix = '?' + name + '='; }
+
+          if (result) {
+            return prefix + result;
+          } else {
+            return '';
+          }
+        });
+      }
+    });
+  },
+
+  // TODO: Add ability to customize templateResolver
+  templateResolverFor: function(type) {
+    return Ember.Object.create({
+      host: this.get('host'),
+      namespace: this.get('namespace'),
+      pathForType: this.pathForType(type),
+
+      id: function(id, record) {
+        if (id && !isArray(id)) { return sanitize(id); }
+      },
+
+      unknownProperty: function(key) {
+        return function(id, record) {
+          return get(record, key);
+        };
+      }
+    });
+  },
+
+ /**
     @method urlPrefix
     @private
     @param {String} path
@@ -105,7 +144,6 @@ export default Ember.Mixin.create({
 
     return url.join('/');
   },
-
 
   /**
     Determines the pathname for a given type.
