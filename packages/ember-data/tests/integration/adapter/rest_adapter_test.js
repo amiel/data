@@ -1349,6 +1349,39 @@ test('buildURL - with a url template', function() {
   }));
 });
 
+test('buildURL - with a url and urlSegment overrides', function() {
+  run(function() {
+
+    var CustomAdapter = DS.RESTAdapter.extend({
+      host: 'http://example.com',
+      urlTemplate: '{host}/api/v1/{pathForType}/{id}',
+      urlSegments: {
+        host: 'https://example.com',
+        id: function(type, id, record) {
+          return id + "-foo";
+        }
+      }
+    });
+
+    env = setupStore({
+      post: Post,
+      comment: Comment,
+      superUser: SuperUser,
+      adapter: CustomAdapter
+    });
+
+    store = env.store;
+    adapter = env.adapter;
+  });
+
+  ajaxResponse({ posts: [{ id: 1 }] });
+
+  run(store, 'find', 'post', 1).then(async(function(post) {
+    equal(passedUrl, "https://example.com/api/v1/posts/1-foo");
+  }));
+});
+
+
 
 test('buildURL - with host and namespace', function() {
   run(function() {

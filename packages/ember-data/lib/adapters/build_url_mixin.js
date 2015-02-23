@@ -32,6 +32,7 @@ var sanitize = encodeURIComponent;
 export default Ember.Mixin.create({
   // Default template should mimick original behaviour
   urlTemplate: '{host}{/namespace}/{pathForType}{/id}',
+  mergedProperties: ['urlSegments'],
 
   /**
     Builds a URL for a given type and optional ID.
@@ -52,12 +53,13 @@ export default Ember.Mixin.create({
   buildURL: function(type, id, record) {
     var template = this.compileTemplate(this.get('urlTemplate'));
     var templateResolver = this.templateResolverFor(type);
+    var adapter = this;
 
     return template.fill(function(name) {
       var result = templateResolver.get(name);
 
       if (Ember.typeOf(result) === 'function') {
-        return result(id, record);
+        return result.call(adapter, type, id, record);
       } else {
         return result;
       }
@@ -86,21 +88,23 @@ export default Ember.Mixin.create({
 
   // TODO: Add ability to customize templateResolver
   templateResolverFor: function(type) {
-    return Ember.Object.create({
-      host: this.get('host'),
-      namespace: this.get('namespace'),
-      pathForType: this.pathForType(type),
+    return Ember.Object.create(get(this, 'urlSegments'));
+  },
 
-      id: function(id, record) {
-        if (id && !isArray(id)) { return sanitize(id); }
-      },
+  urlSegments: {
+    host: function () { return this.get('host'); },
+    namespace: function() { return this.get('namespace'); },
+    pathForType: function(type) { return this.pathForType(type); },
 
-      unknownProperty: function(key) {
-        return function(id, record) {
-          return get(record, key);
-        };
-      }
-    });
+    id: function(type, id, record) {
+      if (id && !isArray(id)) { return sanitize(id); }
+    },
+
+    unknownProperty: function(key) {
+      return function(type, id, record) {
+        return get(record, key);
+      };
+    }
   },
 
  /**
