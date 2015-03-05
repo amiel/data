@@ -50,7 +50,7 @@ export default Ember.Mixin.create({
     @param {DS.Model} record
     @return {String} url
   */
-  buildURL: function(type, id, record) {
+  buildURL: function(type, id, record, requestType) {
     var template = this.compileTemplate(this.get('urlTemplate'));
     var templateResolver = this.templateResolverFor(type);
     var adapter = this;
@@ -59,7 +59,7 @@ export default Ember.Mixin.create({
       var result = templateResolver.get(name);
 
       if (Ember.typeOf(result) === 'function') {
-        return result.call(adapter, type, id, record);
+        return result.call(adapter, type, id, record, requestType);
       } else {
         return result;
       }
@@ -101,7 +101,7 @@ export default Ember.Mixin.create({
     },
 
     unknownProperty: function(key) {
-      return function(type, id, record) {
+      return function(type, id, record, requestType) {
         return get(record, key);
       };
     }

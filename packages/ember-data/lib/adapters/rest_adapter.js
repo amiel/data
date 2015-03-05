@@ -392,7 +392,7 @@ export default Adapter.extend(BuildURLMixin, {
     if (this.sortQueryParams) {
       query = this.sortQueryParams(query);
     }
-    return this.ajax(this.buildURL(type.typeKey), 'GET', { data: query });
+    return this.ajax(this.buildURL(type.typeKey, null, query, 'findQuery'), 'GET');
   },
 
   /**
